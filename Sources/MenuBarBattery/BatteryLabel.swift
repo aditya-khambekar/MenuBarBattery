@@ -16,30 +16,36 @@ struct StatusPiece: Equatable {
         case proCase
         case maxHeadset
 
-        var symbolName: String {
+        func symbolName(filledChargingCase: Bool) -> String {
             switch self {
             case .pair: "airpods"
             case .left: "airpod.left"
             case .right: "airpod.right"
-            case .chargingCase: "airpods.chargingcase.fill"
+            case .chargingCase:
+                filledChargingCase ? "airpods.chargingcase.fill" : "airpods.chargingcase"
             case .headphones: "headphones"
             case .proPair: "airpodspro"
             case .proLeft: "airpodpro.left"
             case .proRight: "airpodpro.right"
-            case .proCase: "airpodspro.chargingcase.wireless.fill"
+            case .proCase:
+                filledChargingCase
+                    ? "airpodspro.chargingcase.wireless.fill"
+                    : "airpodspro.chargingcase.wireless"
             case .maxHeadset: "airpodsmax"
             }
         }
 
         /// Plain glyph used when the preferred symbol is not on this Mac.
-        var fallbackSymbolName: String? {
+        func fallbackSymbolName(filledChargingCase: Bool) -> String? {
             switch self {
             case .proPair: return "airpods"
             case .proLeft: return "airpod.left"
             case .proRight: return "airpod.right"
-            case .proCase: return "airpods.chargingcase.fill"
+            case .proCase:
+                return filledChargingCase ? "airpods.chargingcase.fill" : "airpods.chargingcase"
             case .maxHeadset: return "headphones"
-            case .chargingCase: return "airpods.chargingcase"
+            case .chargingCase:
+                return filledChargingCase ? "airpods.chargingcase" : nil
             case .pair, .left, .right, .headphones:
                 return nil
             }
@@ -57,10 +63,14 @@ struct StatusPiece: Equatable {
             }
         }
 
-        func resolvedSymbolName(isAvailable: (String) -> Bool) -> String {
-            if isAvailable(symbolName) { return symbolName }
-            if let fallbackSymbolName { return fallbackSymbolName }
-            return symbolName
+        func resolvedSymbolName(
+            filledChargingCase: Bool = true,
+            isAvailable: (String) -> Bool
+        ) -> String {
+            let name = symbolName(filledChargingCase: filledChargingCase)
+            if isAvailable(name) { return name }
+            if let fallback = fallbackSymbolName(filledChargingCase: filledChargingCase) { return fallback }
+            return name
         }
     }
 
@@ -205,23 +215,35 @@ enum StatusLayout {
 @MainActor
 enum BatteryLabel {
     private static let symbolPointSize: CGFloat = 13
-    /// Matches the native menu-bar battery: percent sits smaller than the glyph.
-    private static let fontSize: CGFloat = NSFont.smallSystemFontSize
     private static let glyphTextGap: CGFloat = 2
     private static let segmentGap: CGFloat = 6
 
-    static func image(for battery: AirPodsBattery) -> NSImage? {
+    /// Smaller keeps the native menu-bar battery scale. Match-icons uses the glyph point size.
+    private static func percentFontSize(_ percentSize: PercentSize) -> CGFloat {
+        switch percentSize {
+        case .smaller: NSFont.smallSystemFontSize
+        case .matchIcons: symbolPointSize
+        }
+    }
+
+    static func image(
+        for battery: AirPodsBattery,
+        appearance: Appearance = .standard
+    ) -> NSImage? {
         let pieces = StatusLayout.pieces(for: battery)
         guard !pieces.isEmpty else { return nil }
 
-        let font = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .regular)
+        let font = NSFont.monospacedDigitSystemFont(
+            ofSize: percentFontSize(appearance.percentSize),
+            weight: .regular
+        )
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: NSColor.black,
         ]
         let measured = pieces.map { piece in
             MeasuredPiece(
-                symbol: symbolImage(piece.glyph),
+                symbol: symbolImage(piece.glyph, appearance: appearance),
                 text: NSAttributedString(string: "\(piece.percent)%", attributes: attributes)
             )
         }
@@ -280,12 +302,16 @@ enum BatteryLabel {
         return symbolRect.minY + optical.midY - ink.midY
     }
 
-    private static func symbolImage(_ glyph: StatusPiece.Glyph) -> NSImage {
-        let name = glyph.resolvedSymbolName { systemSymbol($0) != nil }
-        if let symbol = systemSymbol(name) {
+    private static func symbolImage(_ glyph: StatusPiece.Glyph, appearance: Appearance) -> NSImage {
+        let filled = appearance.filledChargingCase
+        let name = glyph.resolvedSymbolName(filledChargingCase: filled) {
+            systemSymbol($0, style: appearance.iconStyle) != nil
+        }
+        if let symbol = systemSymbol(name, style: appearance.iconStyle) {
             return symbol
         }
-        if let fallback = glyph.fallbackSymbolName, let symbol = systemSymbol(fallback) {
+        if let fallback = glyph.fallbackSymbolName(filledChargingCase: filled),
+           let symbol = systemSymbol(fallback, style: appearance.iconStyle) {
             return symbol
         }
         let fallback = NSImage(size: NSSize(width: symbolPointSize, height: symbolPointSize))
@@ -296,9 +322,11 @@ enum BatteryLabel {
         return fallback
     }
 
-    private static func systemSymbol(_ name: String) -> NSImage? {
-        let configuration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
-            .applying(NSImage.SymbolConfiguration(hierarchicalColor: .black))
+    private static func systemSymbol(_ name: String, style: IconStyle) -> NSImage? {
+        var configuration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
+        if style == .hierarchical {
+            configuration = configuration.applying(NSImage.SymbolConfiguration(hierarchicalColor: .black))
+        }
         guard let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(configuration) else {
             return nil

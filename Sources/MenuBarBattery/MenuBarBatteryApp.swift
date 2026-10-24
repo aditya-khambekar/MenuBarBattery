@@ -1,5 +1,4 @@
 import AppKit
-import ServiceManagement
 import AirPodsBattery
 
 @main
@@ -18,11 +17,19 @@ enum MenuBarBatteryMain {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let monitor = AirPodsMonitor()
+    private let appearanceSettings = AppearanceSettings()
+    private var settingsController: SettingsWindowController?
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
     private var latest: AirPodsBattery?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appearanceDidChange(_:)),
+            name: AppearanceSettings.didChangeNotification,
+            object: appearanceSettings
+        )
         monitor.onUpdate = { [weak self] battery in
             self?.apply(battery)
         }
@@ -44,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         let item = ensureStatusItem()
-        item.button?.image = BatteryLabel.image(for: battery)
+        item.button?.image = BatteryLabel.image(for: battery, appearance: appearanceSettings.appearance)
         item.button?.imagePosition = .imageOnly
         item.button?.imageScaling = .scaleProportionallyDown
         if let label = StatusLayout.accessibilityDescription(for: battery) {
@@ -91,15 +98,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        let launch = NSMenuItem(
-            title: "Launch at Login",
-            action: #selector(toggleLaunchAtLogin(_:)),
-            keyEquivalent: ""
+        let settings = NSMenuItem(
+            title: "Settings…",
+            action: #selector(showSettings(_:)),
+            keyEquivalent: ","
         )
-        launch.target = self
-        launch.state = Self.launchAtLoginIsOn ? .on : .off
-        launch.isEnabled = true
-        menu.addItem(launch)
+        settings.target = self
+        settings.isEnabled = true
+        menu.addItem(settings)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit", action: #selector(quit(_:)), keyEquivalent: "q")
         quit.target = self
@@ -107,30 +113,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(quit)
     }
 
-    private static var launchAtLoginIsOn: Bool {
-        switch SMAppService.mainApp.status {
-        case .enabled, .requiresApproval:
-            return true
-        default:
-            return false
-        }
+    @objc private func appearanceDidChange(_ notification: Notification) {
+        apply(latest)
     }
 
-    @objc private func toggleLaunchAtLogin(_ sender: NSMenuItem) {
-        let service = SMAppService.mainApp
-        do {
-            if Self.launchAtLoginIsOn {
-                try service.unregister()
-            } else {
-                try service.register()
-            }
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Couldn’t change launch at login"
-            alert.informativeText = error.localizedDescription
-            alert.runModal()
+    @objc private func showSettings(_ sender: Any?) {
+        if settingsController == nil {
+            settingsController = SettingsWindowController(appearance: appearanceSettings)
         }
-        sender.state = Self.launchAtLoginIsOn ? .on : .off
+        settingsController?.present()
     }
 
     @objc private func quit(_ sender: Any?) {

@@ -176,14 +176,38 @@ final class StatusLayoutTests: XCTestCase {
             "airpodspro"
         )
     }
+
+    func testOutlineCaseSymbols() {
+        let missing: (String) -> Bool = { _ in false }
+        XCTAssertEqual(
+            StatusPiece.Glyph.chargingCase.resolvedSymbolName(filledChargingCase: false, isAvailable: missing),
+            "airpods.chargingcase"
+        )
+        XCTAssertEqual(
+            StatusPiece.Glyph.proCase.resolvedSymbolName(filledChargingCase: false, isAvailable: missing),
+            "airpods.chargingcase"
+        )
+        XCTAssertEqual(
+            StatusPiece.Glyph.proCase.resolvedSymbolName(filledChargingCase: false) {
+                $0 == "airpodspro.chargingcase.wireless"
+            },
+            "airpodspro.chargingcase.wireless"
+        )
+        XCTAssertEqual(
+            StatusPiece.Glyph.chargingCase.symbolName(filledChargingCase: true),
+            "airpods.chargingcase.fill"
+        )
+    }
 }
 
 @MainActor
 final class BatteryLabelDrawingTests: XCTestCase {
     func testSymbolsExist() {
         for name in [
-            "airpods", "airpod.left", "airpod.right", "airpods.chargingcase.fill", "headphones",
+            "airpods", "airpod.left", "airpod.right", "airpods.chargingcase.fill", "airpods.chargingcase",
+            "headphones",
             "airpodspro", "airpodpro.left", "airpodpro.right", "airpodspro.chargingcase.wireless.fill",
+            "airpodspro.chargingcase.wireless",
             "airpodsmax",
         ] {
             XCTAssertNotNil(NSImage(systemSymbolName: name, accessibilityDescription: nil), name)
@@ -225,6 +249,27 @@ final class BatteryLabelDrawingTests: XCTestCase {
             name: "AirPods Pro", left: 11, right: 11, caseLevel: 11
         )))
         XCTAssertEqual(eighty.size.width, eleven.size.width)
+    }
+
+    func testMatchIconsPercentIsWiderThanSmaller() throws {
+        let battery = AirPodsBattery(name: "AirPods Max", single: 64)
+        let smaller = try XCTUnwrap(BatteryLabel.image(for: battery))
+        let matched = try XCTUnwrap(BatteryLabel.image(
+            for: battery,
+            appearance: Appearance(percentSize: .matchIcons, iconStyle: .hierarchical, filledChargingCase: true)
+        ))
+        // The symbol box already sets the image height. Larger digits show up as width.
+        XCTAssertGreaterThan(matched.size.width, smaller.size.width)
+        XCTAssertGreaterThanOrEqual(matched.size.height, smaller.size.height)
+    }
+
+    func testMonochromeOutlineStillDrawsATemplateImage() throws {
+        let image = try XCTUnwrap(BatteryLabel.image(
+            for: AirPodsBattery(name: "AirPods", left: 85, right: 85, caseLevel: 62),
+            appearance: Appearance(percentSize: .smaller, iconStyle: .monochrome, filledChargingCase: false)
+        ))
+        XCTAssertTrue(image.isTemplate)
+        XCTAssertGreaterThan(image.size.width, 40)
     }
 
     private func inkStats(_ image: NSImage) throws -> (count: Int, bounds: NSRect) {
@@ -308,5 +353,88 @@ final class BatteryLabelDrawingTests: XCTestCase {
         }
         close(columns.count)
         return segments
+    }
+}
+
+@MainActor
+final class SettingsWindowTests: XCTestCase {
+    func testAppearanceSettingsRoundTrip() {
+        let name = "MenuBarBatteryAppearanceTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        let settings = AppearanceSettings(defaults: defaults)
+        XCTAssertEqual(settings.appearance, .standard)
+        settings.appearance = Appearance(
+            percentSize: .matchIcons,
+            iconStyle: .monochrome,
+            filledChargingCase: false
+        )
+        let reloaded = AppearanceSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.appearance, settings.appearance)
+        defaults.removePersistentDomain(forName: name)
+    }
+
+    func testSettingsWindowShowsGeneralAndAppearance() throws {
+        let settings = AppearanceSettings(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let controller = SettingsWindowController(appearance: settings)
+        let window = try XCTUnwrap(controller.window)
+        XCTAssertEqual(window.title, "Settings")
+        XCTAssertFalse(window.styleMask.contains(.resizable))
+        XCTAssertGreaterThan(window.contentView?.fittingSize.width ?? 0, 240)
+        XCTAssertGreaterThan(window.contentView?.fittingSize.height ?? 0, 100)
+
+        let labels = window.contentView.map(controlLabels(in:)) ?? []
+        XCTAssertTrue(labels.contains("General"))
+        XCTAssertTrue(labels.contains("Appearance"))
+        XCTAssertTrue(labels.contains("Launch at Login"))
+        XCTAssertTrue(labels.contains("Percent size"))
+        XCTAssertTrue(labels.contains("Icons"))
+        XCTAssertTrue(labels.contains("Filled charging case"))
+        XCTAssertTrue(labels.contains("Smaller"))
+        XCTAssertTrue(labels.contains("Same as icons"))
+        XCTAssertTrue(labels.contains("Hierarchical"))
+        XCTAssertTrue(labels.contains("Monochrome"))
+        let popups = window.contentView.map(popupTitles(in:)) ?? []
+        XCTAssertEqual(popups, ["Smaller", "Hierarchical"])
+        XCTAssertEqual(filledState(in: window.contentView), .on)
+    }
+
+    private func popupTitles(in view: NSView) -> [String] {
+        var titles: [String] = []
+        if let popup = view as? NSPopUpButton {
+            titles.append(popup.titleOfSelectedItem ?? "")
+        }
+        for subview in view.subviews {
+            titles.append(contentsOf: popupTitles(in: subview))
+        }
+        return titles
+    }
+
+    private func filledState(in view: NSView?) -> NSControl.StateValue {
+        guard let view else { return .off }
+        if let button = view as? NSButton, button.title == "Filled charging case" {
+            return button.state
+        }
+        for subview in view.subviews {
+            let state = filledState(in: subview)
+            if state == .on { return state }
+        }
+        return .off
+    }
+
+    private func controlLabels(in view: NSView) -> [String] {
+        var found: [String] = []
+        if let field = view as? NSTextField, !field.stringValue.isEmpty {
+            found.append(field.stringValue)
+        }
+        if let popup = view as? NSPopUpButton {
+            found.append(contentsOf: popup.itemTitles)
+        } else if let button = view as? NSButton, !button.title.isEmpty {
+            found.append(button.title)
+        }
+        for subview in view.subviews {
+            found.append(contentsOf: controlLabels(in: subview))
+        }
+        return found
     }
 }
