@@ -1,0 +1,16 @@
+{
+  "SPBluetoothDataType": [
+    {
+      "device_connected": [
+        {
+          "Magic Keyboard": {
+            "device_minorType": "Keyboard",
+            "device_vendorID": "0x004C",
+            "device_batteryLevel": "55%",
+            "device_batteryLevelLeft": "55%"
+          }
+        }
+      ]
+    }
+  ]
+}

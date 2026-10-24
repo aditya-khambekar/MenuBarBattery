@@ -1,0 +1,22 @@
+{
+  "SPBluetoothDataType": [
+    {
+      "device_connected": [
+        {
+          "Sony WH-1000XM5": {
+            "device_vendorID": "0x054C",
+            "device_minorType": "Headphones",
+            "device_batteryLevelSingle": "50%"
+          }
+        },
+        {
+          "Beats Solo": {
+            "device_vendorID": "0x004C",
+            "device_minorClassOfDevice": 6,
+            "device_batteryLevelSingle": 44
+          }
+        }
+      ]
+    }
+  ]
+}

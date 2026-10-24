@@ -1,0 +1,15 @@
+{
+  "SPBluetoothDataType": [
+    {
+      "device_connected": [
+        {
+          "Name’s AirPods Max": {
+            "device_minorType": "Headphones",
+            "device_vendorID": "0x004C",
+            "device_batteryLevelSingle": "64%"
+          }
+        }
+      ]
+    }
+  ]
+}

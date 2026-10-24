@@ -1,0 +1,23 @@
+{
+  "SPBluetoothDataType": [
+    {
+      "device_connected": [
+        {
+          "Office AirPods": {
+            "device_minorType": "Headphones",
+            "device_batteryLevelLeft": "40%",
+            "device_batteryLevelRight": "40%"
+          }
+        },
+        {
+          "Name’s AirPods Pro": {
+            "device_minorType": "Headphones",
+            "device_batteryLevelLeft": "90%",
+            "device_batteryLevelRight": "80%",
+            "device_batteryLevelCase": "70%"
+          }
+        }
+      ]
+    }
+  ]
+}

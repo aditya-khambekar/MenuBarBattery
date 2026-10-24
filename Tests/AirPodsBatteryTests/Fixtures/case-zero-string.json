@@ -1,0 +1,16 @@
+{
+  "SPBluetoothDataType": [
+    {
+      "device_connected": [
+        {
+          "Name’s AirPods Pro": {
+            "device_minorType": "Headphones",
+            "device_batteryLevelLeft": "70%",
+            "device_batteryLevelRight": "65%",
+            "device_batteryLevelCase": "0%"
+          }
+        }
+      ]
+    }
+  ]
+}
