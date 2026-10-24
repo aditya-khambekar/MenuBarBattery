@@ -37,6 +37,7 @@ enum IOBluetoothBatterySource {
             name: name,
             isConnected: true,
             vendorID: caller.integerValue(of: device, selector: "vendorID"),
+            productID: caller.integerValue(of: device, selector: "productID"),
             isHeadphones: isHeadphonesClass(major: device.deviceClassMajor, minor: device.deviceClassMinor),
             exposesBatterySelectors: true,
             left: caller.integerValue(of: device, selector: "batteryPercentLeft"),

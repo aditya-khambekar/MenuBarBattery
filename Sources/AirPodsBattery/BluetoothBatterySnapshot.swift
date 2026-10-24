@@ -11,6 +11,8 @@ public struct BluetoothBatterySnapshot: Equatable, Sendable {
     public let isConnected: Bool
     /// Bluetooth company ID. Apple audio devices use `0x004C`.
     public let vendorID: Int?
+    /// USB product ID. AirPods Pro on this Mac report `0x2024`. `0` is kept raw.
+    public let productID: Int?
     public let isHeadphones: Bool
     /// True when the process actually has the private battery selectors.
     public let exposesBatterySelectors: Bool
@@ -24,6 +26,7 @@ public struct BluetoothBatterySnapshot: Equatable, Sendable {
         name: String,
         isConnected: Bool,
         vendorID: Int?,
+        productID: Int? = nil,
         isHeadphones: Bool,
         exposesBatterySelectors: Bool,
         left: Int?,
@@ -34,6 +37,7 @@ public struct BluetoothBatterySnapshot: Equatable, Sendable {
         self.name = name
         self.isConnected = isConnected
         self.vendorID = vendorID
+        self.productID = productID
         self.isHeadphones = isHeadphones
         self.exposesBatterySelectors = exposesBatterySelectors
         self.left = left

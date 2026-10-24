@@ -162,6 +162,21 @@ final class AirPodsSelectorTests: XCTestCase {
         XCTAssertEqual(battery?.left, 85)
     }
 
+    func testBluetoothProductIDStaysOnTheReading() {
+        let snapshot = makeSnapshot(
+            name: "AirPods",
+            left: 10,
+            right: 10,
+            caseLevel: 10,
+            productID: 0x2024
+        )
+        let battery = selectAirPodsBattery(snapshots: [snapshot])
+        XCTAssertEqual(battery?.name, "AirPods")
+        XCTAssertEqual(battery?.productID, 0x2024)
+        XCTAssertEqual(battery?.left, 10)
+        XCTAssertEqual(battery?.caseLevel, 10)
+    }
+
     func testKeyboardSnapshotIsIgnored() {
         let keyboard = makeSnapshot(name: "Magic Keyboard", isHeadphones: false, left: 55)
         XCTAssertNil(selectAirPodsBattery(snapshots: [keyboard], profilerJSON: nil))

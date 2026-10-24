@@ -70,7 +70,8 @@ private func bluetoothCandidate(from snapshot: BluetoothBatterySnapshot) -> AirP
         left: snapshot.left,
         right: snapshot.right,
         caseLevel: snapshot.caseLevel,
-        single: snapshot.single
+        single: snapshot.single,
+        productID: snapshot.productID
     )
     if snapshot.name.range(of: "airpods", options: .caseInsensitive) != nil {
         return battery

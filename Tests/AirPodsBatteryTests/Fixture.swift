@@ -54,12 +54,14 @@ func makeSnapshot(
     left: Int? = nil,
     right: Int? = nil,
     caseLevel: Int? = nil,
-    single: Int? = nil
+    single: Int? = nil,
+    productID: Int? = nil
 ) -> BluetoothBatterySnapshot {
     BluetoothBatterySnapshot(
         name: name,
         isConnected: isConnected,
         vendorID: vendorID,
+        productID: productID,
         isHeadphones: isHeadphones,
         exposesBatterySelectors: exposesBatterySelectors,
         left: left,

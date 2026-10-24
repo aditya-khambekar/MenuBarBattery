@@ -121,7 +121,8 @@ private func candidate(name: String, properties: [String: Any]) -> AirPodsBatter
         single: firstReportedLevel(
             parsePercent(properties["device_batteryLevelSingle"]),
             parsePercent(properties["device_batteryLevelCombined"])
-        )
+        ),
+        productID: parseProductID(properties["device_productID"])
     )
     if name.range(of: "airpods", options: .caseInsensitive) != nil {
         return battery
@@ -152,6 +153,25 @@ private func parsePercent(_ value: Any?) -> Int? {
         return ReportedBattery.level(raw)
     }
     return nil
+}
+
+/// `device_productID` is `"0x2024"` on this Mac, or an integer. Zero is not an ID.
+private func parseProductID(_ value: Any?) -> Int? {
+    if value == nil || value is NSNull { return nil }
+    if let number = value as? NSNumber {
+        if CFGetTypeID(number) == CFBooleanGetTypeID() { return nil }
+        let raw = number.intValue
+        return raw == 0 ? nil : raw
+    }
+    guard let text = value as? String else { return nil }
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.lowercased().hasPrefix("0x") {
+        let hex = trimmed.dropFirst(2).prefix { $0.isHexDigit }
+        guard let raw = Int(hex, radix: 16), raw != 0 else { return nil }
+        return raw
+    }
+    guard let raw = Int(trimmed), raw != 0 else { return nil }
+    return raw
 }
 
 private func isAppleVendor(_ value: Any?) -> Bool {

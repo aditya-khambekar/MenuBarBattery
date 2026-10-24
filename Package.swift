@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "AirPodsBattery", targets: ["AirPodsBattery"]),
+        .executable(name: "MenuBarBattery", targets: ["MenuBarBattery"]),
     ],
     targets: [
         .target(
@@ -18,12 +19,26 @@ let package = Package(
                 .linkedFramework("CoreAudio"),
             ]
         ),
+        .executableTarget(
+            name: "MenuBarBattery",
+            dependencies: ["AirPodsBattery"],
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("IOBluetooth"),
+                .linkedFramework("ServiceManagement"),
+                .linkedFramework("CoreAudio"),
+            ]
+        ),
         .testTarget(
             name: "AirPodsBatteryTests",
             dependencies: ["AirPodsBattery"],
             resources: [
                 .copy("Fixtures"),
             ]
+        ),
+        .testTarget(
+            name: "MenuBarBatteryTests",
+            dependencies: ["MenuBarBattery"]
         ),
     ]
 )

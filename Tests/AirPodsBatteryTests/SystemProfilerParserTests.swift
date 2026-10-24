@@ -24,7 +24,14 @@ final class SystemProfilerParserTests: XCTestCase {
         XCTAssertEqual(parsed.count, 1)
         XCTAssertEqual(
             parsed[0],
-            AirPodsBattery(name: "Studio AirPods Pro", left: 90, right: 82, caseLevel: 72, single: nil)
+            AirPodsBattery(
+                name: "Studio AirPods Pro",
+                left: 90,
+                right: 82,
+                caseLevel: 72,
+                single: nil,
+                productID: 0x2024
+            )
         )
     }
 
