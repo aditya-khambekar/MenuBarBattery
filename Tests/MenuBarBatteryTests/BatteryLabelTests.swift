@@ -169,7 +169,7 @@ final class StatusLayoutTests: XCTestCase {
         XCTAssertEqual(StatusPiece.Glyph.proPair.resolvedSymbolName(isAvailable: missing), "airpods")
         XCTAssertEqual(StatusPiece.Glyph.proLeft.resolvedSymbolName(isAvailable: missing), "airpod.left")
         XCTAssertEqual(StatusPiece.Glyph.proRight.resolvedSymbolName(isAvailable: missing), "airpod.right")
-        XCTAssertEqual(StatusPiece.Glyph.proCase.resolvedSymbolName(isAvailable: missing), "airpods.chargingcase")
+        XCTAssertEqual(StatusPiece.Glyph.proCase.resolvedSymbolName(isAvailable: missing), "airpods.chargingcase.fill")
         XCTAssertEqual(StatusPiece.Glyph.maxHeadset.resolvedSymbolName(isAvailable: missing), "headphones")
         XCTAssertEqual(
             StatusPiece.Glyph.proPair.resolvedSymbolName { $0 == "airpodspro" },
@@ -182,8 +182,8 @@ final class StatusLayoutTests: XCTestCase {
 final class BatteryLabelDrawingTests: XCTestCase {
     func testSymbolsExist() {
         for name in [
-            "airpods", "airpod.left", "airpod.right", "airpods.chargingcase", "headphones",
-            "airpodspro", "airpodpro.left", "airpodpro.right", "airpodspro.chargingcase.wireless",
+            "airpods", "airpod.left", "airpod.right", "airpods.chargingcase.fill", "headphones",
+            "airpodspro", "airpodpro.left", "airpodpro.right", "airpodspro.chargingcase.wireless.fill",
             "airpodsmax",
         ] {
             XCTAssertNotNil(NSImage(systemSymbolName: name, accessibilityDescription: nil), name)

@@ -21,12 +21,12 @@ struct StatusPiece: Equatable {
             case .pair: "airpods"
             case .left: "airpod.left"
             case .right: "airpod.right"
-            case .chargingCase: "airpods.chargingcase"
+            case .chargingCase: "airpods.chargingcase.fill"
             case .headphones: "headphones"
             case .proPair: "airpodspro"
             case .proLeft: "airpodpro.left"
             case .proRight: "airpodpro.right"
-            case .proCase: "airpodspro.chargingcase.wireless"
+            case .proCase: "airpodspro.chargingcase.wireless.fill"
             case .maxHeadset: "airpodsmax"
             }
         }
@@ -37,9 +37,10 @@ struct StatusPiece: Equatable {
             case .proPair: return "airpods"
             case .proLeft: return "airpod.left"
             case .proRight: return "airpod.right"
-            case .proCase: return "airpods.chargingcase"
+            case .proCase: return "airpods.chargingcase.fill"
             case .maxHeadset: return "headphones"
-            case .pair, .left, .right, .chargingCase, .headphones:
+            case .chargingCase: return "airpods.chargingcase"
+            case .pair, .left, .right, .headphones:
                 return nil
             }
         }
@@ -204,7 +205,8 @@ enum StatusLayout {
 @MainActor
 enum BatteryLabel {
     private static let symbolPointSize: CGFloat = 13
-    private static let fontSize: CGFloat = 13
+    /// Matches the native menu-bar battery: percent sits smaller than the glyph.
+    private static let fontSize: CGFloat = NSFont.smallSystemFontSize
     private static let glyphTextGap: CGFloat = 2
     private static let segmentGap: CGFloat = 6
 
@@ -296,7 +298,7 @@ enum BatteryLabel {
 
     private static func systemSymbol(_ name: String) -> NSImage? {
         let configuration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
-            .applying(NSImage.SymbolConfiguration(paletteColors: [.black]))
+            .applying(NSImage.SymbolConfiguration(hierarchicalColor: .black))
         guard let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(configuration) else {
             return nil
