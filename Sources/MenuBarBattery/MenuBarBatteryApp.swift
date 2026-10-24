@@ -18,6 +18,7 @@ enum MenuBarBatteryMain {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let monitor = AirPodsMonitor()
     private let appearanceSettings = AppearanceSettings()
+    private let positionStore = StatusItemPositionStore()
     private var settingsController: SettingsWindowController?
     private var statusItem: NSStatusItem?
     private var menu: NSMenu?
@@ -47,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fputs("MenuBarBattery \(summary)\n", stderr)
         fflush(stderr)
         guard let battery, !StatusLayout.pieces(for: battery).isEmpty else {
-            removeStatusItem()
+            hideStatusItem()
             return
         }
         let item = ensureStatusItem()
@@ -63,7 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func ensureStatusItem() -> NSStatusItem {
-        if let statusItem { return statusItem }
+        if let statusItem {
+            statusItem.isVisible = true
+            return statusItem
+        }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -71,12 +75,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.menu = menu
         self.menu = menu
         statusItem = item
+        positionStore.apply(to: item)
+        item.isVisible = true
         return item
+    }
+
+    private func hideStatusItem() {
+        guard let statusItem else { return }
+        positionStore.startProtecting()
+        statusItem.isVisible = false
+        positionStore.clearPersistedVisibility()
     }
 
     private func removeStatusItem() {
         guard let statusItem else { return }
+        positionStore.startProtecting()
         NSStatusBar.system.removeStatusItem(statusItem)
+        positionStore.clearPersistedVisibility()
         self.statusItem = nil
         menu = nil
     }
