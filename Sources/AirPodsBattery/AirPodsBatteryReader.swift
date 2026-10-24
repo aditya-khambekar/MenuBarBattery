@@ -2,8 +2,8 @@ import Foundation
 
 /// Live AirPods battery read.
 ///
-/// Asks IOBluetooth first. `system_profiler` runs only when that source returns
-/// no connected AirPods level (selectors missing, nothing connected, or all zeros).
+/// Asks IOBluetooth first. `system_profiler` runs when that reading is not
+/// complete (left, right, and case, or a single headset level).
 public struct AirPodsBatteryReader {
     public let loadSnapshots: () -> [BluetoothBatterySnapshot]
     public let loadProfilerJSON: () -> Data?
@@ -33,15 +33,16 @@ public struct AirPodsBatteryReader {
 
     public func currentBattery() -> AirPodsBattery? {
         let outputName = loadOutputDeviceName()
+        let snapshots = loadSnapshots()
         if let battery = selectAirPodsBattery(
-            snapshots: loadSnapshots(),
+            snapshots: snapshots,
             profilerJSON: nil,
             outputDeviceName: outputName
-        ) {
+        ), isCompleteAirPodsReading(battery) {
             return battery
         }
         return selectAirPodsBattery(
-            snapshots: [],
+            snapshots: snapshots,
             profilerJSON: loadProfilerJSON(),
             outputDeviceName: outputName
         )

@@ -68,16 +68,75 @@ final class AirPodsSelectorTests: XCTestCase {
         XCTAssertEqual(withoutJSON, battery)
     }
 
-    func testZeroCaseOnBluetoothDoesNotMergeProfilerCase() throws {
+    func testCompleteBluetoothReadingWinsOverDifferentProfilerReading() throws {
+        let snapshot = makeSnapshot(left: 11, right: 22, caseLevel: 33, single: 0)
+        let battery = selectAirPodsBattery(
+            snapshots: [snapshot],
+            profilerJSON: try Fixture.data("classic-connected.json"),
+            outputDeviceName: nil
+        )
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "AirPods Pro", left: 11, right: 22, caseLevel: 33, single: nil)
+        )
+    }
+
+    func testBluetoothBudsWithoutCaseLoseToCompleteProfilerReading() throws {
         let snapshot = makeSnapshot(left: 90, right: 80, caseLevel: 0, single: 0)
         let battery = selectAirPodsBattery(
             snapshots: [snapshot],
             profilerJSON: try Fixture.data("classic-connected.json"),
             outputDeviceName: nil
         )
-        XCTAssertEqual(battery?.left, 90)
-        XCTAssertEqual(battery?.right, 80)
-        XCTAssertNil(battery?.caseLevel)
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "Name’s AirPods Pro", left: 85, right: 80, caseLevel: 62, single: nil)
+        )
+    }
+
+    func testBothSourcesMissingCaseKeepsBluetoothBuds() throws {
+        let snapshot = makeSnapshot(left: 90, right: 80, caseLevel: 0, single: 0)
+        let battery = selectAirPodsBattery(
+            snapshots: [snapshot],
+            profilerJSON: try Fixture.data("left-right-no-case.json"),
+            outputDeviceName: nil
+        )
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "AirPods Pro", left: 90, right: 80, caseLevel: nil, single: nil)
+        )
+    }
+
+    func testBluetoothSingleIsCompleteWithoutBudsOrCase() throws {
+        let snapshot = makeSnapshot(
+            name: "AirPods Max",
+            left: 0,
+            right: 0,
+            caseLevel: 0,
+            single: 64
+        )
+        let battery = selectAirPodsBattery(
+            snapshots: [snapshot],
+            profilerJSON: try Fixture.data("classic-connected.json"),
+            outputDeviceName: nil
+        )
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "AirPods Max", left: nil, right: nil, caseLevel: nil, single: 64)
+        )
+    }
+
+    func testIncompleteBluetoothBudsLoseToProfilerSingle() throws {
+        let snapshot = makeSnapshot(left: 90, right: 80, caseLevel: 0, single: 0)
+        let battery = selectAirPodsBattery(
+            snapshots: [snapshot],
+            profilerJSON: try Fixture.data("airpods-max.json"),
+            outputDeviceName: nil
+        )
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "Name’s AirPods Max", left: nil, right: nil, caseLevel: nil, single: 64)
+        )
     }
 
     func testAllZeroBluetoothSnapshotFallsThroughToProfiler() throws {
@@ -131,6 +190,57 @@ final class AirPodsSelectorTests: XCTestCase {
         XCTAssertEqual(battery?.right, 81)
         XCTAssertEqual(battery?.caseLevel, 70)
         XCTAssertFalse(profilerCalled)
+    }
+
+    func testReaderSkipsProfilerWhenBluetoothReportsSingle() {
+        var profilerCalled = false
+        let reader = AirPodsBatteryReader(
+            loadSnapshots: {
+                [makeSnapshot(name: "AirPods Max", left: 0, right: 0, caseLevel: 0, single: 64)]
+            },
+            loadProfilerJSON: {
+                profilerCalled = true
+                return nil
+            },
+            loadOutputDeviceName: { nil }
+        )
+        let battery = reader.currentBattery()
+        XCTAssertEqual(battery?.single, 64)
+        XCTAssertNil(battery?.left)
+        XCTAssertFalse(profilerCalled)
+    }
+
+    func testReaderUsesProfilerWhenBluetoothBudsLackACase() throws {
+        var profilerCalled = false
+        let profiler = try Fixture.data("classic-connected.json")
+        let reader = AirPodsBatteryReader(
+            loadSnapshots: { [makeSnapshot(left: 90, right: 80, caseLevel: 0, single: 0)] },
+            loadProfilerJSON: {
+                profilerCalled = true
+                return profiler
+            },
+            loadOutputDeviceName: { nil }
+        )
+        let battery = reader.currentBattery()
+        XCTAssertTrue(profilerCalled)
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "Name’s AirPods Pro", left: 85, right: 80, caseLevel: 62, single: nil)
+        )
+    }
+
+    func testReaderKeepsBluetoothBudsWhenProfilerAlsoLacksACase() throws {
+        let profiler = try Fixture.data("left-right-no-case.json")
+        let reader = AirPodsBatteryReader(
+            loadSnapshots: { [makeSnapshot(left: 90, right: 80, caseLevel: 0, single: 0)] },
+            loadProfilerJSON: { profiler },
+            loadOutputDeviceName: { nil }
+        )
+        let battery = reader.currentBattery()
+        XCTAssertEqual(
+            battery,
+            AirPodsBattery(name: "AirPods Pro", left: 90, right: 80, caseLevel: nil, single: nil)
+        )
     }
 
     func testReaderUsesProfilerWhenBluetoothIsAllZeros() throws {

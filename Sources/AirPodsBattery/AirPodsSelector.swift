@@ -2,22 +2,46 @@ import Foundation
 
 /// Picks one connected AirPods reading.
 ///
-/// Bluetooth snapshots win when any of them has a real level. All-zero snapshots
-/// and an empty snapshot list fall through to `system_profiler` JSON. Devices that
-/// are not connected, are not AirPods, and are not Apple headphones with a bud,
-/// case, or single level are ignored.
+/// Keeps the first source that is complete. A buds reading is complete when left,
+/// right, and case are all reporting. A headset that reports `single` (AirPods Max)
+/// is complete without those three. When neither source is complete, a Bluetooth
+/// reading with any real level wins; otherwise the profiler reading is used.
+/// Parts are never merged across sources: `0` and missing stay nil.
+///
+/// Devices that are not connected, are not AirPods, and are not Apple headphones
+/// with a bud, case, or single level are ignored.
 public func selectAirPodsBattery(
     snapshots: [BluetoothBatterySnapshot] = [],
     profilerJSON: Data? = nil,
     outputDeviceName: String? = nil
 ) -> AirPodsBattery? {
-    let fromBluetooth = snapshots.compactMap(bluetoothCandidate(from:))
-    if let chosen = chooseAirPodsBattery(from: fromBluetooth, outputDeviceName: outputDeviceName) {
-        return chosen
+    let fromBluetooth = chooseAirPodsBattery(
+        from: snapshots.compactMap(bluetoothCandidate(from:)),
+        outputDeviceName: outputDeviceName
+    )
+    if let fromBluetooth, isCompleteAirPodsReading(fromBluetooth) {
+        return fromBluetooth
     }
-    guard let profilerJSON else { return nil }
-    let fromProfiler = SystemProfilerBluetoothParser.candidates(from: profilerJSON)
-    return chooseAirPodsBattery(from: fromProfiler, outputDeviceName: outputDeviceName)
+    guard let profilerJSON else { return fromBluetooth }
+    let fromProfiler = chooseAirPodsBattery(
+        from: SystemProfilerBluetoothParser.candidates(from: profilerJSON),
+        outputDeviceName: outputDeviceName
+    )
+    if let fromProfiler, isCompleteAirPodsReading(fromProfiler) {
+        return fromProfiler
+    }
+    if let fromBluetooth, fromBluetooth.hasReading {
+        return fromBluetooth
+    }
+    return fromProfiler
+}
+
+/// A buds reading needs left, right, and case. `single` is a complete headset on its own.
+func isCompleteAirPodsReading(_ battery: AirPodsBattery) -> Bool {
+    if battery.single != nil {
+        return true
+    }
+    return battery.left != nil && battery.right != nil && battery.caseLevel != nil
 }
 
 /// Chooses among AirPods candidates that report at least one level.

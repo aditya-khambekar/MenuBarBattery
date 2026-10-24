@@ -13,16 +13,18 @@ final class LiveAirPodsBatteryTests: XCTestCase {
 
         let snapshots = IOBluetoothBatterySource.snapshots()
         let fromBluetooth = selectAirPodsBattery(snapshots: snapshots, profilerJSON: nil)
+        let combined = selectAirPodsBattery(snapshots: snapshots, profilerJSON: profilerData)
         let live = try XCTUnwrap(AirPodsBatteryReader.connectedAirPods())
         XCTAssertTrue(live.hasReading)
         XCTAssertNotNil(live.name.range(of: "airpods", options: .caseInsensitive))
-        // Names differ between IOBluetooth and system_profiler, so a matching name
-        // means the live read stopped on the Bluetooth snapshots. Percents are not
-        // compared: a bud can tick between the two reads.
         if let fromBluetooth, fromBluetooth.hasReading {
             XCTAssertTrue(snapshots.contains(where: \.exposesBatterySelectors))
-            XCTAssertEqual(live.name, fromBluetooth.name)
-            XCTAssertEqual(live.reportedPartCount, fromBluetooth.reportedPartCount)
         }
+        // Percents can tick between the probe and the live read. Name, and whether
+        // case or single is reporting, identify the source the selector kept.
+        let expected = try XCTUnwrap(combined)
+        XCTAssertEqual(live.name, expected.name)
+        XCTAssertEqual(live.caseLevel == nil, expected.caseLevel == nil)
+        XCTAssertEqual(live.single == nil, expected.single == nil)
     }
 }
